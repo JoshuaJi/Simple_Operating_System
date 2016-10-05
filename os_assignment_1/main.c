@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 //
 // This code is given for illustration purposes. You need not include or follow this
 // strictly. Feel free to writer better or bug free code. This example code block does not
