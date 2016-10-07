@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#define CMD_LENGTH 20
+#define NUMBER_OF_HISTORY 10
 //
 // This code is given for illustration purposes. You need not include or follow this
 // strictly. Feel free to writer better or bug free code. This example code block does not
@@ -25,6 +27,7 @@ int getcmd(char *prompt, char *args[], int *background)
     char *token, *loc;
     char *line = NULL;
     size_t linecap = 0;
+
     printf("%s", prompt);
     length = (int)getline(&line, &linecap, stdin);
     if (length <= 0) {
@@ -48,21 +51,29 @@ int getcmd(char *prompt, char *args[], int *background)
 
 int main(void)
 {
-    char *args[20];
+    char *history_cmd[NUMBER_OF_HISTORY];
+    char *args[CMD_LENGTH];
+    int history_index = 0;
     int bg;
+
+    for (int i = 0; i < NUMBER_OF_HISTORY; i++){
+        history_cmd[i] = NULL;
+    }
+
     while(1) {
         bg = 0;
         int cnt = getcmd("\n>> ", args, &bg);
-        /* the steps can be..:
-         (1) fork a child process using fork()
-         (2) the child process will invoke execvp()
-         (3) if background is not specified, the parent will wait,
-         otherwise parent starts the next command... */
-        
+
         args[cnt] = NULL;
         pid_t pid = fork();
         if (pid == 0){
-            execvp(args[0], args);
+            if (strcmp(*args, "history") == 0){
+                for (int i=0; i < NUMBER_OF_HISTORY; i++){
+                    printf("%d %s\n", history_index-10+i, history_cmd[i]);
+                }
+            }else{
+                execvp(args[0], args);
+            }
             exit(0);
         }else{
             if (!bg){
@@ -71,8 +82,12 @@ int main(void)
             }else{
                 int status;
                 waitpid(pid, &status, WNOHANG);
-                printf("%d", status);
             }
+
+            free(history_cmd[history_index%NUMBER_OF_HISTORY]);
+            strcpy(history_cmd[history_index++], *args);
+            if (history_index >= NUMBER_OF_HISTORY)
+                history_index = 0;
         }
     }
 }
