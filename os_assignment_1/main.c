@@ -21,6 +21,27 @@
 // worry about deallocating memory. You need to ensure memory is allocated and deallocated
 // properly so that your shell works without leaking memory.
 //
+
+
+struct history_cmd
+{
+    int index;
+    char * cmd;
+};
+
+struct history_cmd *create_history_cmd(int index, char * cmd){
+    struct history_cmd *temp_history_cmd = malloc(sizeof(struct history_cmd));
+    temp_history_cmd->index = index;
+    temp_history_cmd->cmd = malloc(sizeof(char)*(strlen(cmd)+1));
+    strcpy(temp_history_cmd->cmd, cmd);
+    return temp_history_cmd;
+}
+
+void free_history_cmd(struct history_cmd *temp_cmd){
+    free(temp_cmd->cmd);
+    free(temp_cmd);
+}
+
 int getcmd(char *prompt, char *args[], int *background)
 {
     int length, i = 0;
@@ -51,25 +72,26 @@ int getcmd(char *prompt, char *args[], int *background)
 
 int main(void)
 {
-    char *history_cmd[NUMBER_OF_HISTORY];
+    struct history_cmd **history_cmds = malloc(sizeof(struct history_cmd)*NUMBER_OF_HISTORY);
     char *args[CMD_LENGTH];
-    int history_index = 0;
     int bg;
-
-    for (int i = 0; i < NUMBER_OF_HISTORY; i++){
-        history_cmd[i] = NULL;
-    }
+    int history_index = 0;
 
     while(1) {
         bg = 0;
         int cnt = getcmd("\n>> ", args, &bg);
 
         args[cnt] = NULL;
+        puts(*args);
         pid_t pid = fork();
         if (pid == 0){
             if (strcmp(*args, "history") == 0){
                 for (int i=0; i < NUMBER_OF_HISTORY; i++){
-                    printf("%d %s\n", history_index-10+i, history_cmd[i]);
+                    if (history_cmds[(history_index-1+i)%10]){
+                        struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
+                        printf("%d %s\n", temp_cmd->index, temp_cmd->cmd);
+                        free_history_cmd(temp_cmd);
+                    }
                 }
             }else{
                 execvp(args[0], args);
@@ -84,10 +106,12 @@ int main(void)
                 waitpid(pid, &status, WNOHANG);
             }
 
-            free(history_cmd[history_index%NUMBER_OF_HISTORY]);
-            strcpy(history_cmd[history_index++], *args);
-            if (history_index >= NUMBER_OF_HISTORY)
-                history_index = 0;
+            if (history_cmds[history_index%10]){
+                free_history_cmd(history_cmds[history_index%10]);
+            }
+            struct history_cmd *new_history_cmd = create_history_cmd(history_index, *args);
+            history_cmds[history_index%10] = new_history_cmd;
+            history_index++;
         }
     }
 }
