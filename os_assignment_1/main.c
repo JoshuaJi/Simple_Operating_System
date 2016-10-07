@@ -26,20 +26,47 @@
 struct history_cmd
 {
     int index;
-    char * cmd;
+    char *cmd[CMD_LENGTH];
 };
 
-struct history_cmd *create_history_cmd(int index, char * cmd){
+struct history_cmd *create_history_cmd(int index, char * args[]){
     struct history_cmd *temp_history_cmd = malloc(sizeof(struct history_cmd));
     temp_history_cmd->index = index;
-    temp_history_cmd->cmd = malloc(sizeof(char)*(strlen(cmd)+1));
-    strcpy(temp_history_cmd->cmd, cmd);
+    int i = 0;
+    while(*(args+i)){
+        temp_history_cmd->cmd[i] = *(args+i);
+        i++;
+    }
     return temp_history_cmd;
-}
+};
 
 void free_history_cmd(struct history_cmd *temp_cmd){
-    free(temp_cmd->cmd);
     free(temp_cmd);
+}
+
+void print_cmd(char ** args){
+    int i = 0; 
+    while (*(args+i)){
+        printf("%s ", *(args+i));
+        i++;
+    }
+    printf("\n");
+}
+
+void print_history(struct history_cmd * temp_cmd){
+    printf("index: %d", temp_cmd->index);
+    //print_cmd(temp_cmd->cmd);
+}
+
+void print_history_list(struct history_cmd ** history_cmds, int history_index){
+    for (int i=0; i < NUMBER_OF_HISTORY; i++){
+        if (history_cmds[(history_index-1+i)%10]){
+            struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
+            printf("%d", temp_cmd->index);
+            //print_cmd(temp_cmd->cmd);
+            free_history_cmd(temp_cmd);
+        }
+    }
 }
 
 int getcmd(char *prompt, char *args[], int *background)
@@ -59,59 +86,60 @@ int getcmd(char *prompt, char *args[], int *background)
         *background = 1;
         *loc = ' ';
     } else
-        *background = 0;
+    *background = 0;
     while ((token = strsep(&line, " \t\n")) != NULL) {
         for (int j = 0; j < strlen(token); j++)
             if (token[j] <= 32)
                 token[j] = '\0';
-        if (strlen(token) > 0)
-            args[i++] = token;
+            if (strlen(token) > 0)
+                args[i++] = token;
+        }
+        return i;
     }
-    return i;
-}
 
-int main(void)
-{
-    struct history_cmd **history_cmds = malloc(sizeof(struct history_cmd)*NUMBER_OF_HISTORY);
-    char *args[CMD_LENGTH];
-    int bg;
-    int history_index = 0;
+    int main(void)
+    {
+        struct history_cmd **history_cmds = malloc(sizeof(struct history_cmd)*NUMBER_OF_HISTORY);
+        char *args[CMD_LENGTH];
+        int bg;
+        int history_index = 0;
 
-    while(1) {
-        bg = 0;
-        int cnt = getcmd("\n>> ", args, &bg);
+        while(1) {
+            bg = 0;
+            int cnt = getcmd("\n>> ", args, &bg);
 
-        args[cnt] = NULL;
-        puts(*args);
-        pid_t pid = fork();
-        if (pid == 0){
-            if (strcmp(*args, "history") == 0){
-                for (int i=0; i < NUMBER_OF_HISTORY; i++){
-                    if (history_cmds[(history_index-1+i)%10]){
-                        struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
-                        printf("%d %s\n", temp_cmd->index, temp_cmd->cmd);
-                        free_history_cmd(temp_cmd);
+            args[cnt] = NULL;
+            //print_cmd(args);
+            pid_t pid = fork();
+            if (pid == 0){
+                if (strcmp(*args, "history") == 0){
+                    for (int i=0; i < NUMBER_OF_HISTORY; i++){
+                        if (history_cmds[(history_index-1+i)%10]){
+                            struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
+                            printf("%d ", temp_cmd->index);
+                            print_cmd(temp_cmd->cmd);
+                            free_history_cmd(temp_cmd);
+                        }
                     }
+                }else{
+                    execvp(args[0], args);
                 }
+                exit(0);
             }else{
-                execvp(args[0], args);
-            }
-            exit(0);
-        }else{
-            if (!bg){
-                int status;
-                waitpid(pid, &status, 0);
-            }else{
-                int status;
-                waitpid(pid, &status, WNOHANG);
-            }
+                if (!bg){
+                    int status;
+                    waitpid(pid, &status, 0);
+                }else{
+                    int status;
+                    waitpid(pid, &status, WNOHANG);
+                }
 
-            if (history_cmds[history_index%10]){
-                free_history_cmd(history_cmds[history_index%10]);
+                if (history_cmds[history_index%10]){
+                    free_history_cmd(history_cmds[history_index%10]);
+                }
+                struct history_cmd *new_history_cmd = create_history_cmd(history_index, args);
+                history_cmds[history_index%10] = new_history_cmd;
+                history_index++;
             }
-            struct history_cmd *new_history_cmd = create_history_cmd(history_index, *args);
-            history_cmds[history_index%10] = new_history_cmd;
-            history_index++;
         }
     }
-}
