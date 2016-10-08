@@ -144,10 +144,7 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 continue;
             args[cnt] = NULL;
             //print_cmd(args);
-            int redir_index;
-            if ((redir_index = find_redir(args)) != -1){
-                printf("redirection: %d\n", redir_index);
-            }else if (strcmp(*args, "history") == 0){
+            if (strcmp(*args, "history") == 0){
                 print_history(history_cmds, history_index);
             }else if (strcmp(*args, "cd") == 0){
                 change_directory(args);
@@ -158,10 +155,37 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
             }else{
                 pid_t pid = fork();
                 if (pid == 0){
+                    int redir_index;
                     if (is_history){
                         int history_num = atoi(args[0]);
                         struct history_cmd *temp_cmd = history_cmds[history_num-1];
                         execvp(temp_cmd->cmd[0], temp_cmd->cmd);
+                    }
+                    else if ((redir_index = find_redir(args)) != -1){
+
+
+
+
+
+
+
+                        strncpy(array2, args, 18);
+
+                        printf("redirection: %d\n", redir_index);
+
+                        FILE * fp;
+
+                        fp = fopen ("file.txt", "w+");
+                        fprintf(fp, "%s %s %s %d", "We", "are", "in", 2012);
+                        fclose(fp);
+
+
+
+
+
+
+
+
                     }else{
                         execvp(args[0], args);
                     }
