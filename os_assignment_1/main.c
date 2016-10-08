@@ -50,21 +50,18 @@ void print_cmd(char ** args){
     }
 }
 
-// void print_history(struct history_cmd * temp_cmd){
-//     printf("index: %d", temp_cmd->index);
-//     //print_cmd(temp_cmd->cmd);
-// }
-
-// void print_history_list(struct history_cmd ** history_cmds, int history_index){
-//     for (int i=0; i < NUMBER_OF_HISTORY; i++){
-//         if (history_cmds[(history_index-1+i)%10]){
-//             struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
-//             printf("%d", temp_cmd->index);
-//             //print_cmd(temp_cmd->cmd);
-//             free(temp_cmd);
-//         }
-//     }
-// }
+void print_history(struct history_cmd ** history_cmds, int history_index){
+    for (int i=0; i < NUMBER_OF_HISTORY; i++){
+        struct history_cmd *temp_cmd;
+        if ((temp_cmd = history_cmds[(history_index+i)%10])){
+            printf("%d ", temp_cmd->index);
+            print_cmd(temp_cmd->cmd);
+            if (temp_cmd->is_bg)
+                printf("&");
+            printf("\n");
+        }
+    }
+}
 
 void change_directory(char *args[]){
     if(*(args+1)){
@@ -84,6 +81,17 @@ void PWD(){
     else{
         perror("Unable to get current director");
     }
+}
+
+int find_redir(char *args[]){
+    int i = 0;
+    while(*(args+i)){
+        if(strchr(*(args+i), '>')){
+            return i;
+        }
+        i++;
+    }
+    return -1;
 }
 
 int getcmd(char *prompt, char *args[], int *background, int *is_history)
@@ -136,22 +144,17 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 continue;
             args[cnt] = NULL;
             //print_cmd(args);
-
-            if (strcmp(*args, "history") == 0){
-                for (int i=0; i < NUMBER_OF_HISTORY; i++){
-                    struct history_cmd *temp_cmd;
-                    if ((temp_cmd = history_cmds[(history_index+i)%10])){
-                        printf("%d ", temp_cmd->index);
-                        print_cmd(temp_cmd->cmd);
-                        if (temp_cmd->is_bg)
-                            printf("&");
-                        printf("\n");
-                    }
-                }
+            int redir_index;
+            if ((redir_index = find_redir(args)) != -1){
+                printf("redirection: %d\n", redir_index);
+            }else if (strcmp(*args, "history") == 0){
+                print_history(history_cmds, history_index);
             }else if (strcmp(*args, "cd") == 0){
                 change_directory(args);
             }else if (strcmp(*args, "pwd") == 0){
                 PWD();
+            }else if (strcmp(*args, "exit") == 0){
+                exit(0);
             }else{
                 pid_t pid = fork();
                 if (pid == 0){
@@ -174,10 +177,10 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 }
             }
 
-
             if (history_cmds[history_index%10]){
                 free(history_cmds[history_index%10]);
             }
+
             struct history_cmd *new_history_cmd;
             if (is_history){
                 int history_num = atoi(args[0]);
