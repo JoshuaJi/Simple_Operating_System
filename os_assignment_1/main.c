@@ -28,14 +28,12 @@ struct history_cmd
     int index;
     char *cmd[CMD_LENGTH];
     int is_bg;
-    int is_history;
 };
 
-struct history_cmd *create_history_cmd(int index, char * args[], int is_bg, int is_history){
+struct history_cmd *create_history_cmd(int index, char * args[], int is_bg){
     struct history_cmd *temp_history_cmd = malloc(sizeof(struct history_cmd));
     temp_history_cmd->index = index;
     temp_history_cmd->is_bg = is_bg;
-    temp_history_cmd->is_history = is_history;
     int i = 0;
     while(*(args+i)){
         temp_history_cmd->cmd[i] = *(args+i);
@@ -43,10 +41,6 @@ struct history_cmd *create_history_cmd(int index, char * args[], int is_bg, int 
     }
     return temp_history_cmd;
 };
-
-void free_history_cmd(struct history_cmd *temp_cmd){
-    free(temp_cmd);
-}
 
 void print_cmd(char ** args){
     int i = 0; 
@@ -56,19 +50,39 @@ void print_cmd(char ** args){
     }
 }
 
-void print_history(struct history_cmd * temp_cmd){
-    printf("index: %d", temp_cmd->index);
-    //print_cmd(temp_cmd->cmd);
+// void print_history(struct history_cmd * temp_cmd){
+//     printf("index: %d", temp_cmd->index);
+//     //print_cmd(temp_cmd->cmd);
+// }
+
+// void print_history_list(struct history_cmd ** history_cmds, int history_index){
+//     for (int i=0; i < NUMBER_OF_HISTORY; i++){
+//         if (history_cmds[(history_index-1+i)%10]){
+//             struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
+//             printf("%d", temp_cmd->index);
+//             //print_cmd(temp_cmd->cmd);
+//             free(temp_cmd);
+//         }
+//     }
+// }
+
+void change_directory(char *args[]){
+    if(*(args+1)){
+        int status = chdir(*(args+1));
+        if (status != 0)
+            perror("Invalid directory\n");
+    }else{
+        chdir("/");
+    }
 }
 
-void print_history_list(struct history_cmd ** history_cmds, int history_index){
-    for (int i=0; i < NUMBER_OF_HISTORY; i++){
-        if (history_cmds[(history_index-1+i)%10]){
-            struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
-            printf("%d", temp_cmd->index);
-            //print_cmd(temp_cmd->cmd);
-            free_history_cmd(temp_cmd);
-        }
+void PWD(){
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != NULL){
+        fprintf(stdout, "%s\n", cwd);
+    }
+    else{
+        perror("Unable to get current director");
     }
 }
 
@@ -122,55 +136,55 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 continue;
             args[cnt] = NULL;
             //print_cmd(args);
-            pid_t pid = fork();
-            if (pid == 0){
-                if (is_history)
-                {
-                    int history_num = atoi(args[0]);
-                    struct history_cmd *temp_cmd = history_cmds[history_num-1];
-                    execvp(temp_cmd->cmd[0], temp_cmd->cmd);
-                }
-                else if (strcmp(*args, "history") == 0){
-                    for (int i=0; i < NUMBER_OF_HISTORY; i++){
-                        struct history_cmd *temp_cmd;
-                        if ((temp_cmd = history_cmds[(history_index+i)%10])){
-                            printf("%d ", temp_cmd->index);
-                            if (temp_cmd->is_history)
-                                printf("! ");
-                            print_cmd(temp_cmd->cmd);
-                            if (temp_cmd->is_bg)
-                                printf("&");
-                                printf("\n");
-                            free_history_cmd(temp_cmd);
-                        }
-                    }
-                }else if (strcmp(*args, "cd") == 0){
-                    if(*(args+1)){
-                        printf("%s\n", *(args+1));
-                        int status = chdir(*(args+1));
-                        printf("%d\n", status);
-                    }else
-                        printf("path is invalid\n");
-                }else{
-                    execvp(args[0], args);
-                }
-                exit(0);
-            }else{
-                if (!bg){
-                    int status;
-                    waitpid(pid, &status, 0);
-                }else{
-                    int status;
-                    waitpid(pid, &status, WNOHANG);
-                }
 
- 
+            if (strcmp(*args, "history") == 0){
+                for (int i=0; i < NUMBER_OF_HISTORY; i++){
+                    struct history_cmd *temp_cmd;
+                    if ((temp_cmd = history_cmds[(history_index+i)%10])){
+                        printf("%d ", temp_cmd->index);
+                        print_cmd(temp_cmd->cmd);
+                        if (temp_cmd->is_bg)
+                            printf("&");
+                        printf("\n");
+                    }
+                }
+            }else if (strcmp(*args, "cd") == 0){
+                change_directory(args);
+            }else if (strcmp(*args, "pwd") == 0){
+                PWD();
+            }else{
+                pid_t pid = fork();
+                if (pid == 0){
+                    if (is_history){
+                        int history_num = atoi(args[0]);
+                        struct history_cmd *temp_cmd = history_cmds[history_num-1];
+                        execvp(temp_cmd->cmd[0], temp_cmd->cmd);
+                    }else{
+                        execvp(args[0], args);
+                    }
+                    exit(0);
+                }else{
+                    if (!bg){
+                        int status;
+                        waitpid(pid, &status, 0);
+                    }else{
+                        int status;
+                        waitpid(pid, &status, WNOHANG);
+                    }
+                }
             }
-            
+
+
             if (history_cmds[history_index%10]){
-                free_history_cmd(history_cmds[history_index%10]);
+                free(history_cmds[history_index%10]);
             }
-            struct history_cmd *new_history_cmd = create_history_cmd(history_index+1, args, bg, is_history);
+            struct history_cmd *new_history_cmd;
+            if (is_history){
+                int history_num = atoi(args[0]);
+                new_history_cmd = create_history_cmd(history_index+1, history_cmds[history_num-1]->cmd, bg);
+            }else{
+                new_history_cmd = create_history_cmd(history_index+1, args, bg);
+            }
             history_cmds[history_index%10] = new_history_cmd;
             history_index++;
         }
