@@ -27,11 +27,15 @@ struct history_cmd
 {
     int index;
     char *cmd[CMD_LENGTH];
+    int is_bg;
+    int is_history;
 };
 
-struct history_cmd *create_history_cmd(int index, char * args[]){
+struct history_cmd *create_history_cmd(int index, char * args[], int is_bg, int is_history){
     struct history_cmd *temp_history_cmd = malloc(sizeof(struct history_cmd));
     temp_history_cmd->index = index;
+    temp_history_cmd->is_bg = is_bg;
+    temp_history_cmd->is_history = is_history;
     int i = 0;
     while(*(args+i)){
         temp_history_cmd->cmd[i] = *(args+i);
@@ -50,7 +54,6 @@ void print_cmd(char ** args){
         printf("%s ", *(args+i));
         i++;
     }
-    printf("\n");
 }
 
 void print_history(struct history_cmd * temp_cmd){
@@ -69,7 +72,7 @@ void print_history_list(struct history_cmd ** history_cmds, int history_index){
     }
 }
 
-int getcmd(char *prompt, char *args[], int *background)
+int getcmd(char *prompt, char *args[], int *background, int *is_history)
 {
     int length, i = 0;
     char *token, *loc;
@@ -87,6 +90,13 @@ int getcmd(char *prompt, char *args[], int *background)
         *loc = ' ';
     } else
     *background = 0;
+
+    if (((loc = index(line, '!')) != NULL) && (line[0] == '!')) {
+        *is_history = 1;
+        *loc = ' ';
+    } else
+    *is_history = 0;
+
     while ((token = strsep(&line, " \t\n")) != NULL) {
         for (int j = 0; j < strlen(token); j++)
             if (token[j] <= 32)
@@ -101,23 +111,32 @@ int getcmd(char *prompt, char *args[], int *background)
     {
         struct history_cmd **history_cmds = malloc(sizeof(struct history_cmd)*NUMBER_OF_HISTORY);
         char *args[CMD_LENGTH];
-        int bg;
+        int bg, is_history;
         int history_index = 0;
 
         while(1) {
             bg = 0;
-            int cnt = getcmd("\n>> ", args, &bg);
+            int cnt = getcmd("\n>> ", args, &bg, &is_history);
 
             args[cnt] = NULL;
             //print_cmd(args);
             pid_t pid = fork();
             if (pid == 0){
+                if (is_history)
+                {
+                    printf("is_history\n");
+                }
                 if (strcmp(*args, "history") == 0){
                     for (int i=0; i < NUMBER_OF_HISTORY; i++){
-                        if (history_cmds[(history_index-1+i)%10]){
-                            struct history_cmd *temp_cmd = history_cmds[(history_index-1+i)%10];
+                        struct history_cmd *temp_cmd;
+                        if ((temp_cmd = history_cmds[(history_index+i)%10])){
                             printf("%d ", temp_cmd->index);
+                            if (temp_cmd->is_history)
+                                printf("! ");
                             print_cmd(temp_cmd->cmd);
+                            if (temp_cmd->is_bg)
+                                printf("&");
+                                printf("\n");
                             free_history_cmd(temp_cmd);
                         }
                     }
@@ -137,7 +156,7 @@ int getcmd(char *prompt, char *args[], int *background)
                 if (history_cmds[history_index%10]){
                     free_history_cmd(history_cmds[history_index%10]);
                 }
-                struct history_cmd *new_history_cmd = create_history_cmd(history_index, args);
+                struct history_cmd *new_history_cmd = create_history_cmd(history_index+1, args, bg, is_history);
                 history_cmds[history_index%10] = new_history_cmd;
                 history_index++;
             }
