@@ -118,15 +118,19 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
             bg = 0;
             int cnt = getcmd("\n>> ", args, &bg, &is_history);
 
+            if (cnt == 0)
+                continue;
             args[cnt] = NULL;
             //print_cmd(args);
             pid_t pid = fork();
             if (pid == 0){
                 if (is_history)
                 {
-                    printf("is_history\n");
+                    int history_num = atoi(args[0]);
+                    struct history_cmd *temp_cmd = history_cmds[history_num-1];
+                    execvp(temp_cmd->cmd[0], temp_cmd->cmd);
                 }
-                if (strcmp(*args, "history") == 0){
+                else if (strcmp(*args, "history") == 0){
                     for (int i=0; i < NUMBER_OF_HISTORY; i++){
                         struct history_cmd *temp_cmd;
                         if ((temp_cmd = history_cmds[(history_index+i)%10])){
@@ -140,6 +144,13 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                             free_history_cmd(temp_cmd);
                         }
                     }
+                }else if (strcmp(*args, "cd") == 0){
+                    if(*(args+1)){
+                        printf("%s\n", *(args+1));
+                        int status = chdir(*(args+1));
+                        printf("%d\n", status);
+                    }else
+                        printf("path is invalid\n");
                 }else{
                     execvp(args[0], args);
                 }
@@ -153,12 +164,14 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                     waitpid(pid, &status, WNOHANG);
                 }
 
-                if (history_cmds[history_index%10]){
-                    free_history_cmd(history_cmds[history_index%10]);
-                }
-                struct history_cmd *new_history_cmd = create_history_cmd(history_index+1, args, bg, is_history);
-                history_cmds[history_index%10] = new_history_cmd;
-                history_index++;
+ 
             }
+            
+            if (history_cmds[history_index%10]){
+                free_history_cmd(history_cmds[history_index%10]);
+            }
+            struct history_cmd *new_history_cmd = create_history_cmd(history_index+1, args, bg, is_history);
+            history_cmds[history_index%10] = new_history_cmd;
+            history_index++;
         }
     }
