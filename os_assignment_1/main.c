@@ -144,6 +144,25 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 continue;
             args[cnt] = NULL;
             //print_cmd(args);
+
+            if (is_history){
+                int history_num = atoi(args[0]);
+                struct history_cmd *temp_cmd = history_cmds[history_num-1];
+                int i = 0;
+                while(temp_cmd->cmd[i]){
+                    args[i] = temp_cmd->cmd[i];
+                    i++;
+                }
+                args[i] = NULL;
+                bg = temp_cmd->is_bg;
+            }
+
+            int redir_index;
+            if ((redir_index = find_redir(args)) != -1){
+                args[redir_index] = NULL;
+                printf("redirection: %d\n", redir_index);
+            }
+
             if (strcmp(*args, "history") == 0){
                 print_history(history_cmds, history_index);
             }else if (strcmp(*args, "cd") == 0){
@@ -155,40 +174,12 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
             }else{
                 pid_t pid = fork();
                 if (pid == 0){
-                    int redir_index;
-                    if (is_history){
-                        int history_num = atoi(args[0]);
-                        struct history_cmd *temp_cmd = history_cmds[history_num-1];
-                        execvp(temp_cmd->cmd[0], temp_cmd->cmd);
+                    if (redir_index != -1)
+                    {
+                        fclose(stdout);
+                        FILE *fp = fopen(args[redir_index+1], "w+");
                     }
-                    else if ((redir_index = find_redir(args)) != -1){
-
-
-
-
-
-
-
-                        strncpy(array2, args, 18);
-
-                        printf("redirection: %d\n", redir_index);
-
-                        FILE * fp;
-
-                        fp = fopen ("file.txt", "w+");
-                        fprintf(fp, "%s %s %s %d", "We", "are", "in", 2012);
-                        fclose(fp);
-
-
-
-
-
-
-
-
-                    }else{
-                        execvp(args[0], args);
-                    }
+                    execvp(args[0], args);
                     exit(0);
                 }else{
                     if (!bg){
@@ -201,17 +192,20 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 }
             }
 
+            if (redir_index != -1){
+                args[redir_index] = ">";
+            }
+
             if (history_cmds[history_index%10]){
                 free(history_cmds[history_index%10]);
             }
-
             struct history_cmd *new_history_cmd;
-            if (is_history){
-                int history_num = atoi(args[0]);
-                new_history_cmd = create_history_cmd(history_index+1, history_cmds[history_num-1]->cmd, bg);
-            }else{
+            // if (is_history){
+            //     int history_num = atoi(args[0]);
+            //     new_history_cmd = create_history_cmd(history_index+1, history_cmds[history_num-1]->cmd, bg);
+            // }else{
                 new_history_cmd = create_history_cmd(history_index+1, args, bg);
-            }
+            // }
             history_cmds[history_index%10] = new_history_cmd;
             history_index++;
         }
