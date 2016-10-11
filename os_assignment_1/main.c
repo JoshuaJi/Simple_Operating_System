@@ -83,10 +83,10 @@ void PWD(){
     }
 }
 
-int find_redir(char *args[]){
+int find_char(char *args[], char c){
     int i = 0;
     while(*(args+i)){
-        if(strchr(*(args+i), '>')){
+        if(strchr(*(args+i), c)){
             return i;
         }
         i++;
@@ -143,7 +143,6 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
             if (cnt == 0)
                 continue;
             args[cnt] = NULL;
-            //print_cmd(args);
 
             if (is_history){
                 int history_num = atoi(args[0]);
@@ -157,10 +156,16 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 bg = temp_cmd->is_bg;
             }
 
-            int redir_index;
-            if ((redir_index = find_redir(args)) != -1){
+            int redir_index, pipe_index;
+            int fd[2];
+            pipe(fd);
+            if ((pipe_index = find_char(args, '|')) != -1){
+                args[pipe_index] = NULL;
+                printf("piping index: %d\n", pipe_index);
+            }
+            if ((redir_index = find_char(args, '>')) != -1){
                 args[redir_index] = NULL;
-                printf("redirection: %d\n", redir_index);
+                printf("redirection index: %d\n", redir_index);
             }
 
             if (strcmp(*args, "history") == 0){
@@ -179,17 +184,46 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                         fclose(stdout);
                         FILE *fp = fopen(args[redir_index+1], "w+");
                     }
+                    if (pipe_index != -1)
+                    {
+                        close(fd[0]);
+                        dup2(fd[1], 1);
+                    }
                     execvp(args[0], args);
                     exit(0);
                 }else{
-                    if (!bg){
-                        int status;
-                        waitpid(pid, &status, 0);
-                    }else{
-                        int status;
-                        waitpid(pid, &status, WNOHANG);
+                    int wait_pid_opt = bg? 1 : 0;
+                    int status;
+                    // waitpid(pid, &status, wait_pid_opt && (pipe_index == -1));
+                    waitpid(pid, &status, wait_pid_opt);
+                    if (pipe_index != -1)
+                    {
+                        pid_t pid_pipe = fork();
+                        if (pid_pipe == 0)
+                        {
+                            close(fd[1]);
+                            dup2(fd[0], 0);
+                            char *args_pipe[CMD_LENGTH - pipe_index];
+                            int i = 0;
+                            while (i < (CMD_LENGTH - pipe_index - 1))
+                            {
+                                args_pipe[i] = args[pipe_index + 1 + i];
+                                i++;
+                            }
+                            args_pipe[i] = NULL;
+                            execvp(args_pipe[0], args_pipe);
+                            exit(0);
+                        }else{
+                            close(fd[0]);
+                            close(fd[1]);
+                            waitpid(pid_pipe, &status, wait_pid_opt);
+                        }
                     }
                 }
+            }
+
+            if (pipe_index != -1){
+                args[pipe_index] = "|";
             }
 
             if (redir_index != -1){
@@ -200,12 +234,7 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 free(history_cmds[history_index%10]);
             }
             struct history_cmd *new_history_cmd;
-            // if (is_history){
-            //     int history_num = atoi(args[0]);
-            //     new_history_cmd = create_history_cmd(history_index+1, history_cmds[history_num-1]->cmd, bg);
-            // }else{
-                new_history_cmd = create_history_cmd(history_index+1, args, bg);
-            // }
+            new_history_cmd = create_history_cmd(history_index+1, args, bg);
             history_cmds[history_index%10] = new_history_cmd;
             history_index++;
         }
