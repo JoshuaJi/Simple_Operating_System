@@ -15,6 +15,7 @@
 
 #define CMD_LENGTH 20
 #define NUMBER_OF_HISTORY 10
+#define NUMBER_OF_JOBS 100
 //
 // This code is given for illustration purposes. You need not include or follow this
 // strictly. Feel free to writer better or bug free code. This example code block does not
@@ -22,6 +23,12 @@
 // properly so that your shell works without leaking memory.
 //
 
+
+typedef struct node{
+    int pid;
+    char *cmd;
+    struct node *next;
+}node_t;
 
 struct history_cmd
 {
@@ -36,7 +43,7 @@ struct history_cmd *create_history_cmd(int index, char * args[], int is_bg){
     temp_history_cmd->is_bg = is_bg;
     int i = 0;
     while(*(args+i)){
-        temp_history_cmd->cmd[i] = *(args+i);
+        temp_history_cmd->cmd[i] = strdup(*(args+i));
         i++;
     }
     return temp_history_cmd;
@@ -60,6 +67,40 @@ void print_history(struct history_cmd ** history_cmds, int history_index){
                 printf("&");
             printf("\n");
         }
+    }
+}
+
+void add_job(node_t *job_list, int pid, char *args[]){
+
+    node_t *new_node = malloc(sizeof(node_t));
+    new_node->pid = pid;
+    new_node->cmd = strdup(*args);
+    node_t *current = job_list;
+    while(current->next != NULL)
+        current = current->next;
+    current->next = new_node;
+}
+
+void print_jobs(node_t *job_list){
+    node_t *current = job_list->next;
+    while(current != NULL){
+        printf("%d\t%s\n", current->pid, current->cmd);
+        current = current->next;
+    }
+}
+
+void fg(node_t *job_list, int pid){
+    waitpid(pid, NULL, 0);
+    node_t *current = job_list;
+    while(current->next!= NULL){
+        if (current->next->pid == pid){
+            node_t *temp = current->next;
+            current->next = current->next->next;
+            free(temp);
+            return;
+        }
+        current = current->next;
+
     }
 }
 
@@ -132,6 +173,7 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
     int main(void)
     {
         struct history_cmd **history_cmds = malloc(sizeof(struct history_cmd)*NUMBER_OF_HISTORY);
+        node_t *job_list = malloc(sizeof(node_t));
         char *args[CMD_LENGTH];
         int bg, is_history;
         int history_index = 0;
@@ -170,6 +212,10 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
 
             if (strcmp(*args, "history") == 0){
                 print_history(history_cmds, history_index);
+            }else if (strcmp(*args, "jobs") == 0){
+                print_jobs(job_list);
+            }else if (strcmp(*args, "fg") == 0){
+                fg(job_list, atoi(*(args+1)));
             }else if (strcmp(*args, "cd") == 0){
                 change_directory(args);
             }else if (strcmp(*args, "pwd") == 0){
@@ -194,6 +240,9 @@ int getcmd(char *prompt, char *args[], int *background, int *is_history)
                 }else{
                     int wait_pid_opt = bg? 1 : 0;
                     int status;
+                    if (bg){
+                        add_job(job_list, pid, args);
+                    }
                     // waitpid(pid, &status, wait_pid_opt && (pipe_index == -1));
                     waitpid(pid, &status, wait_pid_opt);
                     if (pipe_index != -1)
