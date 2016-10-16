@@ -271,6 +271,10 @@ void exec_cmd(char* args[], int cnt,int bg, int is_history, int *history_index, 
     // If user type "!" with a number, replace the args by the corresponding command in the history list
     if (is_history){
         int history_num = atoi(args[0]);
+        if (history_num > *history_index+1){
+            printf("Couldn't find corresponding history number\n");
+            return;
+        }
         struct history_cmd *temp_cmd = history_cmds[history_num-1];
         int i = 0;
         while(temp_cmd->cmd[i]){
