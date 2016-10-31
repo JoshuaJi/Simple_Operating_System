@@ -11,6 +11,8 @@
 typedef struct job_queue{
 	int index;
 	int jobs[MAX_NUM_OF_JOBS];
+	sem_t mutex;
+	sem_t job;
 } job_queue;
 
 void error_and_die(char* msg){
@@ -29,7 +31,8 @@ job_queue *create_job_list(){
 
 int main(){
 
-	int fd = shm_open("data", O_CREAT | O_RDWR, 0666);
+	// Initial shared memory
+	int fd = shm_open("data", O_RDWR, 0666);
 	if (fd < 0){
 		error_and_die("shm_open failed");
 	}
@@ -43,14 +46,11 @@ int main(){
 		error_and_die("mmap failed");
 	}
 
-	job_list->jobs[0] = 1;
-	job_list->jobs[1] = 2;
-	job_list->jobs[2] = 3;
+	// 
 
-	while(1){
-		printf("waiting\n");
-		sleep(1);
-	}
+	printf("%d\n", job_list->jobs[0]);
+	printf("%d\n", job_list->jobs[1]);
+	printf("%d\n", job_list->jobs[2]);
 	printf("done\n");
 	return 0;
 }
