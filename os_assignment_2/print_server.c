@@ -1,20 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <semaphore.h>
-
-#define MAX_NUM_OF_JOBS 10
-
-typedef struct job_queue{
-	int id;
-	int index;
-	int jobs[MAX_NUM_OF_JOBS];
-	sem_t mutex;
-	sem_t job;
-} job_queue;
+#include "common.h"
 
 job_queue *job_list;
 int fd;
@@ -24,61 +8,60 @@ void error_and_die(char* msg){
 	exit(0);
 }
 
-// job_queue *create_job_list(){
-// 	job_queue *job_list = malloc(sizeof(job_queue));
-// 	job_list->index = 0;
-// 	for (int i = 0; i < MAX_NUM_OF_JOBS; i++){
-// 		job_list->jobs[i] = 0;
-// 	}
-// 	return job_list;
-// }
-
-void attach_share_memory(){
-	job_list = (job_queue *)mmap(0, sizeof(job_queue), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
-	if (job_list == MAP_FAILED){
-		error_and_die("mmap failed");
-	}
+void setup_shared_mem(){
+	printf("Initializing shared memory region\n");
+	fd =  shm_open("/myshm", O_CREAT | O_RDWR, 0666);
+	if (fd < 0)
+		error_and_die("shm_open");
+	ftruncate(fd, sizeof(job_queue));
 }
 
-int main(){
+void attach_share_mem(int size){
+	job_list = (job_queue *)mmap(0, sizeof(job_queue + (sizeof int)*size), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (job_list == MAP_FAILED)
+		error_and_die("mmap failed");
+}
 
+void init_semaphore(int size){
+	sem_init(&job_list->mutex, 1, 1);
+	sem_init(&job_list->job, 1, size);
+	job_list->id = 0;
+	job_list->index = 0;
+	job_list->jobs = malloc((sizeof int)*size);
+}
 
-	// Initial shared memory
-	int status = shm_unlink("/myshm");
-	if (status == -1){
-		error_and_die("shm_unlink");
+int main(int argc, int*argv){
+	int size;
+
+	if (argc != 2){
+		printf("Incorrect number of arguments\n");
+		printf("Usage: ./server <number of slots>\n");	
+		exit(1);
 	}
+
+	size = atoi(argv[1]);
+	if (size <= 0){
+		printf("Number of slots should be at least 1\n");
+		exit(1);
+	}
+
 	fd = shm_open("/myshm", O_RDWR, 0666);	
+	printf("fd before %d\n", fd);
 	if (fd < 0){
-		printf("Initializing shared memory region\n");
-		fd =  shm_open("/myshm", O_CREAT, 0666);
-
-		if (fd < 0)
-		{
-			error_and_die("shm_open 1");
-		}
-
-
-		ftruncate(fd, sizeof(job_queue));
-
-		attach_share_memory();
-
-	// Initial semaphore if not already
-		if (job_list->id == 0){
-			printf("NULL\n");
-		}else{
-			printf("%d\n", job_list->index);
-		}
+		setup_shared_mem();
+		attach_share_mem(size);
+		init_semaphore(size);
+	}else{
+		attach_share_mem(size);
 	}
 
-	printf("%d\n", fd);
+
 
 
 
 	// main loop
 	while(1){
-		printf("waiting\n");
+		printf("index after %d\n", job_list->index);
 		sleep(1);
 	}
 	printf("done\n");
