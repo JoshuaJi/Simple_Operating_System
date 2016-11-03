@@ -10,7 +10,8 @@ void error_and_die(char* msg){
 }
 
 void require_number_of_slots(int *size){
-	printf("Please enter the number slots you want in shared memory\n");
+	printf("This is your first print server\n");
+	printf("Please initialize the number slots you want in the buffer\n");
 	char size_str[11];
 	fgets(size_str, 11, stdin);
 	int len = strlen(size_str);
@@ -50,15 +51,10 @@ void init_semaphore(int size){
 }
 
 void take_a_job(JOB *job){
+	printf("waiting for full\n");
 	sem_wait(&job_list->full);
+	printf("waiting for mutex\n");
 	sem_wait(&job_list->mutex);
-	if (job_list->current_size == 0){
-		// job_list->id = job_list->id - 1;
-		// error_and_die("Currently the job queue is full, try again later");
-		printf("Current has no job, server prepare to go to sleep\n");
-		while(job_list->current_size == 0)
-			sleep(1);
-	}
 	*job = job_list->jobs[job_list->end];
 	job_list->end = (job_list->end+1) % (job_list->size);
 	job_list->current_size = job_list->current_size-1;
@@ -67,13 +63,14 @@ void take_a_job(JOB *job){
 void print_a_msg(JOB *job){
 	printf("Printer %d starts printing %d pages from client %d\n", server_id, (*job).duration, (*job).source);
 	sem_post(&job_list->mutex);
-	sem_post(&job_list->full);
 	sem_post(&job_list->empty);
 }
 		
 void go_sleep(JOB *job){
 	sleep((*job).duration);
 	printf("Printer %d finishes printing %d pages from client %d\n", server_id, (*job).duration, (*job).source);
+	if (job_list->current_size == 0)
+		printf("No request in buffer, Printer sleeps\n");
 }
 
 

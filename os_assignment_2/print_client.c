@@ -38,22 +38,22 @@ void get_job_params(int argc, char *argv[], int *duration){
 		error_and_die("Page number should range 1 to  999");
 }
 
-JOB create_job(int duration, int id){
-	JOB temp_job;
-	temp_job.duration = duration;
-	temp_job.source = id;
-	return temp_job;
+void create_job(JOB *job, int duration){
+	(*job).duration = duration;
+	(*job).source = client_id;
 }
 
 void put_a_job(JOB job){
 	sem_wait(&job_list->empty);
 
 	sem_wait(&job_list->mutex);
-	if (job_list->current_size == job_list->size){
-		job_list->id = job_list->id - 1;
-		error_and_die("Currently the job queue is full, try again later");
+	if (job_list->current_size >= job_list->size){
+		printf("Currently the queue is full, waiting for an empty slot...\n");
+		while(job_list->current_size >= job_list->size)
+			sleep(1);
 	}
-	job_list->jobs[job_list->start] = job;
+	job_list->jobs[job_list->start].duration = job.duration;
+	job_list->jobs[job_list->start].source = job.source;
 	job_list->start = (job_list->start + 1) % (job_list->size);
 	job_list->current_size = job_list->current_size+1;
 	printf("Client %d has %d pages to print, puts request in Buffer\n", client_id, job.duration);
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]){
 	get_job_params(argc, argv, &duration); 
 	job_list->id = job_list->id + 1;
 	client_id = job_list->id;
-	job = create_job(duration, client_id);
+	create_job(&job, duration);
 	put_a_job(job);
 	release_share_mem();	
 
