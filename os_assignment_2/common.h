@@ -9,6 +9,9 @@
 #include <semaphore.h>
 #include <sys/shm.h>
 
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
 #define MAX_SLOTS 999999999
 
@@ -18,7 +21,8 @@ typedef struct JOB{
 } JOB;
 
 typedef struct JOB_QUEUE{
-	int id;
+	int s_id;
+	int c_id;
 	int start;
 	int end;
 	int size;
