@@ -7,12 +7,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <sys/shm.h>
+
 
 #define MAX_SLOTS 999999999
 
 typedef struct JOB{
 	int duration;
-	int id;
 	int source;
 } JOB;
 
@@ -21,7 +22,8 @@ typedef struct JOB_QUEUE{
 	int start;
 	int end;
 	int size;
-	JOB *jobs;
+	int current_size;
+	JOB jobs[1];
 	sem_t mutex;
 	sem_t full;
 	sem_t empty;
