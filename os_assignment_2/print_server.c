@@ -66,9 +66,9 @@ void assign_server_id(){
 }
 
 void take_a_job(JOB *job){
-	// printf("waiting for full\n");
+	printf("waiting for full\n");
 	sem_wait(&job_list->full);
-	// printf("waiting for mutex\n");
+    printf("waiting for mutex\n");
 	sem_wait(&job_list->mutex);
 	*job = job_list->jobs[job_list->end];
 	job_list->end = (job_list->end+1) % (job_list->size);

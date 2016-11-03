@@ -47,13 +47,21 @@ void put_a_job(JOB job){
 	if (job_list->current_size >= job_list->size)
 		printf(ANSI_COLOR_YELLOW "Currently the queue is full, waiting for an empty slot...\n" ANSI_COLOR_RESET);
 	sem_wait(&job_list->empty);
+	printf("1\n");
 	sem_wait(&job_list->mutex);
+		printf("2\n");
+
 	job_list->jobs[job_list->start].duration = job.duration;
+	printf("3\n");
 	job_list->jobs[job_list->start].source = job.source;
+	printf("4\n");
 	job_list->start = (job_list->start + 1) % (job_list->size);
+	printf("5\n");
 	job_list->current_size = job_list->current_size+1;
+		printf("6\n");
+
+	sem_post(&(job_list->mutex));
 	printf("Client %d has %d pages to print, puts request in Buffer\n", client_id, job.duration);
-	sem_post(&job_list->mutex);
 	sem_post(&job_list->full);
 }
 
