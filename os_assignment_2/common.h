@@ -9,6 +9,7 @@
 #include <semaphore.h>
 #include <sys/shm.h>
 #include <time.h>
+#include  <signal.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -28,6 +29,7 @@ typedef struct JOB_QUEUE{
 	int end;
 	int size;
 	int current_size;
+	int num_server;
 	JOB jobs[10];
 	sem_t mutex;
 	sem_t full;
