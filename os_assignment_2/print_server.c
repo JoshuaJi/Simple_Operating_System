@@ -30,21 +30,21 @@ void require_number_of_slots(int *size){
 	size_str[len] = '\0';
 	*size = atoi(size_str);
 	if ((*size <= 0) || (*size > MAX_SLOTS))
-		error_and_die("Input invalid. Number of slots should range from 1 to 999999999");
+		error_and_die(ANSI_COLOR_RED"Input invalid. Number of slots should range from 1 to 999999999"ANSI_COLOR_RED);
 }
 
 void setup_shared_mem(){
-	printf("Initializing shared memory region" ANSI_COLOR_RESET "\n");
+	printf("Initializing shared memory region" ANSI_COLOR_RED "\n");
 	fd =  shm_open("/myshm", O_CREAT | O_RDWR, 0666);
 	if (fd < 0)
-		error_and_die(ANSI_COLOR_RED"shm_open" ANSI_COLOR_RESET "\n");
+		error_and_die(ANSI_COLOR_RED"shm_open" ANSI_COLOR_RESET );
 	ftruncate(fd, sizeof(JOB_QUEUE) + (sizeof(JOB)*10));
 }
 
 void attach_share_mem(){
 	job_list = (JOB_QUEUE *)mmap(0, sizeof(JOB_QUEUE) + (sizeof(JOB)*10), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (job_list == MAP_FAILED)
-		error_and_die(ANSI_COLOR_RED"mmap failed in attach_share_mem" ANSI_COLOR_RESET "\n");
+		error_and_die(ANSI_COLOR_RED"mmap failed in attach_share_mem" ANSI_COLOR_RESET);
 }
 
 void init_semaphore(int size){
@@ -79,9 +79,7 @@ void assign_server_id(){
 }
 
 void take_a_job(JOB *job){
-	// printf("waiting for full\n");
 	sem_wait(&job_list->full);
-    // printf("waiting for mutex\n");
 	sem_wait(&job_list->mutex);
 	*job = job_list->jobs[job_list->end];
 	job_list->end = (job_list->end+1) % (job_list->size);

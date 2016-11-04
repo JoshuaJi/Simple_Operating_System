@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <sys/shm.h>
+#include <time.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
