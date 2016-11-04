@@ -14,12 +14,12 @@ void setup_shared_mem(){
 	fd =  shm_open("/myshm", O_RDWR, 0666);
 	if (fd < 0)
 		error_and_die(ANSI_COLOR_RED "shm_open failed" ANSI_COLOR_RESET);
-	ftruncate(fd, sizeof(JOB_QUEUE));
+	ftruncate(fd, sizeof(JOB_QUEUE) + sizeof(JOB) * 10);
 }
 
 void attach_share_mem(){
 
-	job_list = (JOB_QUEUE *)mmap(0, sizeof(JOB_QUEUE), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	job_list = (JOB_QUEUE *)mmap(0, sizeof(JOB_QUEUE) + sizeof(JOB) * 10, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (job_list == MAP_FAILED){
 		error_and_die(ANSI_COLOR_RED "mmap failed");
 	}
@@ -58,9 +58,9 @@ void put_a_job(JOB job){
 	job_list->start = (job_list->start + 1) % (job_list->size);
 	printf("5\n");
 	job_list->current_size = job_list->current_size+1;
-		printf("6\n");
+	printf("6\n");
 
-	sem_post(&(job_list->mutex));
+	sem_post(&job_list->mutex);
 	printf("Client %d has %d pages to print, puts request in Buffer\n", client_id, job.duration);
 	sem_post(&job_list->full);
 }

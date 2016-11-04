@@ -27,7 +27,7 @@ typedef struct JOB_QUEUE{
 	int end;
 	int size;
 	int current_size;
-	JOB jobs[1];
+	JOB jobs[10];
 	sem_t mutex;
 	sem_t full;
 	sem_t empty;
