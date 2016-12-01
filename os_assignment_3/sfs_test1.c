@@ -20,7 +20,11 @@ int simple_test(){
 
 
   //Init fresh file system
+  printf("brfore mksys\n");
+
   mksfs(1);
+  printf("after mksys\n");
+
   //So now we should be able to open and close files ... 
   test_open_new_files(file_names, file_id, num_file, &err_no);
   test_close_files(file_names, file_id, num_file, &err_no);

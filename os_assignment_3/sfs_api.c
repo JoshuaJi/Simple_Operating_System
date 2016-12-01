@@ -1,8 +1,10 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include "sfs_api.h"
 #include "disk_emu.h"
 
 #define BLOCK_SIZE 1024
-#define NUM_OF_BLOCK 4096
+#define NUM_OF_BLOCK 2048
 #define NUM_OF_INODE 100
 #define NUM_OF_FILE NUM_OF_INODE
 #define NUM_OF_INODE_BLOCK  6 //((sizeof(Inode)*NUM_OF_INODE)/BLOCK_SIZE) = 5.47
@@ -32,48 +34,49 @@ typedef struct Root_Directory{
 	
 }Root_Directory;
 
-
+typedef struct Free_Bit_Map{
+	int free_block[NUM_OF_BLOCK];
+}Free_Bit_Map;
 
 Super_Block *super_block;
-Inode[NUM_OF_INODE] *inode_table;
-Root_Directory[NUM_OF_FILE] *root_directory_table;
-int *free_bit_map;
+Inode *inode_table;
+Root_Directory *root_directory_table;
+Free_Bit_Map *free_bit_map;
 
 void mksfs(int fresh){
 	super_block = calloc(1, sizeof(Super_Block));
-	inode_table = calloc(1, sizeof(inode_table));
-	root_directory_table = calloc(1, sizeof(root_directory_table));
-	free_bit_map = malloc(sizeof(char)*NUM_OF_BLOCK); 
-
+	inode_table = calloc(NUM_OF_INODE, sizeof(Inode));
+	root_directory_table = calloc(NUM_OF_FILE, sizeof(Root_Directory));
+	free_bit_map = calloc(NUM_OF_BLOCK, sizeof(int)); 
 	if (fresh){
 		super_block->magic_number = 0xACBD0005;
 		super_block->block_size = BLOCK_SIZE;
 		super_block->file_system_size = BLOCK_SIZE*NUM_OF_BLOCK;
 		super_block->inode_table_length = NUM_OF_INODE;
 		super_block->root_directory = 0;
-
 		for (int i = 0; i < NUM_OF_BLOCK; i++){
 			if (i < 14){
-				free_bit_map[i] = 1;
+				free_bit_map->free_block[i] = 1;
 			}else{
-				free_bit_map[i] = 0;
+				free_bit_map->free_block[i] = 0;
 			}
 		}
-		init_fresh_disk(disk_name, block_size, num_block);
+		 printf("a\n");
+		init_fresh_disk("sfs_xu_ji", BLOCK_SIZE, NUM_OF_BLOCK);
+		 printf("b\n");
 		write_blocks(0, 1, super_block);
 		write_blocks(1, NUM_OF_INODE_BLOCK, inode_table);
 		write_blocks(1+NUM_OF_INODE_BLOCK, NUM_OF_ROOT_DIR_BLOCK, root_directory_table);
 		write_blocks(1+NUM_OF_INODE_BLOCK+NUM_OF_ROOT_DIR_BLOCK, NUM_OF_FREE_MAP_BLOCK, free_bit_map);
-
+ printf("c\n");
 	}else{
-		init_disk(disk_name, block_size, num_block);
+		init_disk(disk_name, BLOCK_SIZE, NUM_OF_BLOCK);
 		read_blocks(0, 1, super_block);
 		read_blocks(1, NUM_OF_INODE_BLOCK, inode_table);
 		read_blocks(1+NUM_OF_INODE_BLOCK, NUM_OF_ROOT_DIR_BLOCK, root_directory_table);
 		read_blocks(1+NUM_OF_INODE_BLOCK+NUM_OF_ROOT_DIR_BLOCK, NUM_OF_FREE_MAP_BLOCK, free_bit_map);
 
 	}
-
 }
 int sfs_get_next_file_name(char *fname){
   return 0;
