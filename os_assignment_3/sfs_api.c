@@ -38,13 +38,12 @@ Super_Block *super_block;
 Inode[NUM_OF_INODE] *inode_table;
 Root_Directory[NUM_OF_FILE] *root_directory_table;
 int *free_bit_map;
-free_bit_map = malloc(sizeof(int)*NUM_OF_BLOCK); 
 
 void mksfs(int fresh){
 	super_block = calloc(1, sizeof(Super_Block));
 	inode_table = calloc(1, sizeof(inode_table));
 	root_directory_table = calloc(1, sizeof(root_directory_table));
-	free_bit_map = malloc(sizeof(int)*NUM_OF_BLOCK); 
+	free_bit_map = malloc(sizeof(char)*NUM_OF_BLOCK); 
 
 	if (fresh){
 		super_block->magic_number = 0xACBD0005;
@@ -54,7 +53,7 @@ void mksfs(int fresh){
 		super_block->root_directory = 0;
 
 		for (int i = 0; i < NUM_OF_BLOCK; i++){
-			if (i < 10){
+			if (i < 14){
 				free_bit_map[i] = 1;
 			}else{
 				free_bit_map[i] = 0;
@@ -64,10 +63,15 @@ void mksfs(int fresh){
 		write_blocks(0, 1, super_block);
 		write_blocks(1, NUM_OF_INODE_BLOCK, inode_table);
 		write_blocks(1+NUM_OF_INODE_BLOCK, NUM_OF_ROOT_DIR_BLOCK, root_directory_table);
-		write_blocks(1+NUM_OF_INODE_BLOCK+NUM_OF_ROOT_DIR_BLOCK, NUM_OF_BLOCK-(1+NUM_OF_INODE_BLOCK+NUM_OF_ROOT_DIR_BLOCK), free_bit_map);
+		write_blocks(1+NUM_OF_INODE_BLOCK+NUM_OF_ROOT_DIR_BLOCK, NUM_OF_FREE_MAP_BLOCK, free_bit_map);
 
 	}else{
 		init_disk(disk_name, block_size, num_block);
+		read_blocks(0, 1, super_block);
+		read_blocks(1, NUM_OF_INODE_BLOCK, inode_table);
+		read_blocks(1+NUM_OF_INODE_BLOCK, NUM_OF_ROOT_DIR_BLOCK, root_directory_table);
+		read_blocks(1+NUM_OF_INODE_BLOCK+NUM_OF_ROOT_DIR_BLOCK, NUM_OF_FREE_MAP_BLOCK, free_bit_map);
+
 	}
 
 }
