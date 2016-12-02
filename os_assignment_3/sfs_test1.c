@@ -20,16 +20,18 @@ int simple_test(){
 
 
   //Init fresh file system
-  printf("brfore mksys\n");
 
   mksfs(1);
-  printf("after mksys\n");
 
   //So now we should be able to open and close files ... 
   test_open_new_files(file_names, file_id, num_file, &err_no);
+
+  
   test_close_files(file_names, file_id, num_file, &err_no);
   //Reopen them after closing
   test_open_old_files(file_names, file_id, num_file, &err_no);
+  
+/*
   //Now will attempt to write to file, very small chunk of text
   for(int i = 0; i < iterations; i++){
     test_simple_write_files(file_id, file_size, write_ptr, write_buf, num_file, &err_no);
@@ -54,6 +56,8 @@ int simple_test(){
   //test names + size
   test_get_file_name(file_names, num_file, &err_no);
   test_get_file_size(file_size, file_names, num_file, &err_no);
+
+  */
   
   printf("\n-------------------------------\nSimple test Finished.\nCurrent Error Num: %d\n--------------------------------\n\n", err_no);
 
