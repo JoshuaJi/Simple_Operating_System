@@ -106,13 +106,18 @@ void mksfs(int fresh){
 }
 
 int sfs_get_next_file_name(char *fname){
-	if ((root_directory_table+next_file_index)->file_name){
-		fname = strdup((root_directory_table+next_file_index)->file_name);
-		strcat(fname, ".");
-		strcat(fname, (root_directory_table+next_file_index)->extension);
-		next_file_index = next_file_index+1;
-		return (root_directory_table+next_file_index)->inode_index;
+
+	for (int i = next_file_index; i < NUM_OF_FILE; i++){
+		if((root_directory_table+i)->file_name){
+			next_file_index = i+1;
+			fname = strdup((root_directory_table+next_file_index)->file_name);
+			strcat(fname, ".");
+			strcat(fname, (root_directory_table+next_file_index)->extension);
+			next_file_index = next_file_index+1;
+			return (root_directory_table+next_file_index)->inode_index;
+		}
 	}
+	next_file_index = 0;
 	return 0;
 }
 
@@ -128,6 +133,23 @@ int search_file_in_root(char *fname){
 			if (strcmp(current_fname, fname) == 0){
 				int inode_i = (root_directory_table+i)->inode_index;
 				return inode_i;
+			}
+		}
+	}
+	return -1;
+}
+
+int get_file_index_in_root(char *fname){
+	for (int i = 0; i < NUM_OF_FILE; i++){
+		char *current_fname = NULL;
+		if ((root_directory_table+i)->file_name){
+			current_fname = strdup((root_directory_table+i)->file_name);
+			strcat(current_fname, ".");
+			strcat(current_fname, (root_directory_table+i)->extension);
+		} 
+		if (current_fname != NULL){
+			if (strcmp(current_fname, fname) == 0){
+				return i;
 			}
 		}
 	}
@@ -307,7 +329,7 @@ int sfs_fwseek(int fileID, int loc){
 
 
 int find_empty_data_block(){
-	for (int i = DATA_BLOCK_START_INDEX; i < NUM_OF_DATA_BLOCK; i++){
+	for (int i = DATA_BLOCK_START_INDEX; i < DATA_BLOCK_START_INDEX+NUM_OF_DATA_BLOCK; i++){
 		if (free_bit_map->free_block[i] == 0){
 			return i;
 		}
@@ -385,73 +407,6 @@ int append_inode_data_block(int fileID, int last_block_index){
 	return -1;
 }
 
-int sfs_fwrite(int fileID, char *buf, int length){
-	int file_descriptor_index = -1;
-	for (int i = 0; i < NUM_OF_FILE; i++){
-		if (file_descriptor_table[i].occupied == 1 && file_descriptor_table[i].id == fileID){
-			file_descriptor_index = i;
-			break;
-		}
-	}
-
-	if (file_descriptor_index == -1){
-		printf("File is not currently opened\n");
-		return -1;
-	}
-
-	if (inode_table[file_descriptor_table[file_descriptor_index].id].size + length > FILE_MAX_SIZE){
-		printf("Exceed file maximum size 274432 Bytes\n");
-		return -1;
-	}
-
-	char *last_block = malloc(BLOCK_SIZE*sizeof(char)); 
-	int last_block_index = retrive_last_block_data(last_block, fileID);
-	int buf_position = 0;
-	int last_block_position = 0;
-	for (int i = 0; i < BLOCK_SIZE; i++){
-		if (last_block[i] == NULL){
-			last_block_position = i;
-			break;
-		}
-	}
-	while(buf_position < strlen(buf)){
-		if (last_block[1023] != NULL){
-			write_blocks(last_block_index, 1, last_block);
-			free_bit_map->free_block[last_block_index] = 1;
-			strcpy(last_block, "");
-			last_block[1023] = NULL;
-			last_block_index = find_empty_data_block();
-
-			if(append_inode_data_block(fileID, last_block_index) == -1){
-				printf("reached file size limit\n");
-				return -1;
-			}
-			if (last_block_index == -1){
-				printf("no empty data block left\n");
-				return -1;
-			}
-		}
-
-		*(last_block+last_block_position) = *(buf+buf_position);
-		buf_position++;
-		last_block_position++;
-	}
-
-	if (last_block_position%BLOCK_SIZE != 0){
-		free_bit_map->free_block[last_block_index] = 1;
-		if(append_inode_data_block(fileID, last_block_index) == -1){
-			printf("reached file size limit\n");
-			return -1;
-		}
-		write_blocks(last_block_index, 1, last_block);
-	}
-
-
-	file_descriptor_table[fileID].write_pos += length;
-	inode_table[fileID].size = file_descriptor_table[fileID].write_pos;
-	save_status_on_disk();
-	return buf_position;
-}
 
 int* get_all_data_blocks(int fileID){
 	int* data_block_index = calloc(268, sizeof(int));
@@ -479,6 +434,127 @@ int* get_all_data_blocks(int fileID){
 	return NULL;
 }
 
+int sfs_fwrite(int fileID, char *buf, int length){
+	int file_descriptor_index = -1;
+	for (int i = 0; i < NUM_OF_FILE; i++){
+		if (file_descriptor_table[i].occupied == 1 && file_descriptor_table[i].id == fileID){
+			file_descriptor_index = i;
+			break;
+		}
+	}
+
+	if (file_descriptor_index == -1){
+		printf("File is not currently opened\n");
+		return -1;
+	}
+
+	if (inode_table[fileID].size + length > FILE_MAX_SIZE){
+		printf("Exceed file maximum size 274432 Bytes\n");
+		return -1;
+	}
+
+	char *last_block = malloc(BLOCK_SIZE*sizeof(char)); 
+
+	int w_pointer = file_descriptor_table[file_descriptor_index].write_pos;
+	int data_block_index[268];
+	// data_block_index = get_all_data_blocks(fileID);
+
+
+
+
+
+
+
+
+
+
+	for (int i = 0; i < 12; i++){
+		data_block_index[i] = inode_table[fileID].dir_pointer[i];
+	}
+
+	if (inode_table[fileID].indir_pointer != 0){
+		int indirect_data_index[256];
+		read_blocks(inode_table[fileID].indir_pointer, 1, indirect_data_index);
+		for (int i = 0; i < 256; i++){
+			data_block_index[i+12] = indirect_data_index[i];
+		}
+	}else{
+		for (int i = 0; i < 256; i++){
+			data_block_index[i+12] = 0;
+		}
+	}
+
+
+
+
+
+
+	// for (int i = 0; i < 268; i++)
+	// {
+	// 	printf("%d ", data_block_index[i]);
+	// }
+	// printf("\n");
+
+	int index = w_pointer/BLOCK_SIZE;
+	int last_block_index = data_block_index[index]; //0
+	int starting_position = w_pointer % BLOCK_SIZE; //0
+	if (last_block_index != 0){
+		read_blocks(last_block_index, 1, last_block);
+	}
+	else{
+		last_block_index = find_empty_data_block();
+		if(append_inode_data_block(fileID, last_block_index) == -1){
+			printf("reached file size limit\n");
+			return -1;
+		}
+	}
+	index++;
+	free_bit_map->free_block[last_block_index] = 1;
+
+
+	int i;
+	for (i = starting_position; i < length+starting_position; i++){
+		if ((i-starting_position)%BLOCK_SIZE == 0 && i != starting_position){
+			write_blocks(last_block_index, 1, last_block);
+			free_bit_map->free_block[last_block_index] = 1;
+			if (data_block_index[index] == 0){
+				
+				strcpy(last_block, "");
+				last_block_index = find_empty_data_block();
+
+				if(append_inode_data_block(fileID, last_block_index) == -1){
+					printf("reached file size limit\n");
+					return -1;
+				}
+				if (last_block_index == -1){
+					printf("no empty data block left\n");
+					return -1;
+				}
+			}else{
+				last_block_index = data_block_index[index];
+				index++;
+				strcpy(last_block, "");
+			}
+		}
+
+
+		*(last_block+i) = *(buf+i-starting_position);
+		// printf("%c", *(last_block+i));
+	}
+
+	if (i%BLOCK_SIZE != 0){
+		free_bit_map->free_block[last_block_index] = 1;
+		write_blocks(last_block_index, 1, last_block);
+	}
+
+	file_descriptor_table[file_descriptor_index].write_pos += length;
+	inode_table[fileID].size = file_descriptor_table[file_descriptor_index].write_pos;
+	save_status_on_disk();
+	return i-starting_position;
+}
+
+
+
 int sfs_fread(int fileID, char *buf, int length){
 	int file_descriptor_index = -1;
 
@@ -499,41 +575,76 @@ int sfs_fread(int fileID, char *buf, int length){
 		return -1;
 	}
 
+	int r_pointer = file_descriptor_table[file_descriptor_index].read_pos;
+	if (length+r_pointer > FILE_MAX_SIZE){
+		printf("length exceed maximum file size\n");
+		return -1;
+	}
 	int *data_block_index = calloc(268, sizeof(int));
 	data_block_index = get_all_data_blocks(fileID);
-
-	// for (int i = 0; i < 268; i++){
-	// 	printf("%d\n", data_block_index[i]);
-	// }
-
 
 	int last_data_block_index = 0;
 	char *current_block = calloc(BLOCK_SIZE, sizeof(char));
 	int length_read = 0;
-	for (int i = 0; i < length; i++){
-		if (i % BLOCK_SIZE == 0 && data_block_index[last_data_block_index] != 0){
+
+
+	int index = r_pointer/BLOCK_SIZE;
+	int last_block_index = data_block_index[index]; //0
+	int starting_position = r_pointer % BLOCK_SIZE; //0
+	if (last_block_index != 0){
+		read_blocks(last_block_index, 1, current_block);
+	}
+
+	index++;
+
+	for (int i = r_pointer; i < length+r_pointer; i++){
+		if (i % BLOCK_SIZE == 0 && i != r_pointer && data_block_index[last_data_block_index] != 0){
 			read_blocks(data_block_index[last_data_block_index], 1, current_block);
 			last_data_block_index++;
 		}
-		*(buf+i) = *(current_block+(i%BLOCK_SIZE));
-		length_read++;
+			*(buf+i-r_pointer) = *(current_block+(i%BLOCK_SIZE));
+			length_read++;
 	}
-
-	// while(*(buf+i) != '\0' && *(buf+i) != EOF){
-	// 	if (i % BLOCK_SIZE == 0 && data_block_index[last_data_block_index] != 0){
-	// 		read_blocks(data_block_index[last_data_block_index], 1, current_block);
-	// 		last_data_block_index++;
-	// 	}
-	// 	*(buf+i) = *(current_block+(i%BLOCK_SIZE));
-	// 	i++;
-	// }
-
-
-	//*(buf+length) = '\0';
 
 	free(data_block_index);
 	return length_read;
 }
 int sfs_remove(char *file){
+	int inode_i = search_file_in_root(file);
+	if (inode_i == -1){
+		printf("sfs_get_file_size: no such file name\n");
+		return -1;
+	}
+
+	int *data_block_index = calloc(268, sizeof(int));
+	data_block_index = get_all_data_blocks(inode_i);
+	for (int i = 0; i < 268; i++){
+		if (data_block_index[i] != 0){
+			free_bit_map->free_block[data_block_index[i]] = 0;
+		}
+	}
+	free(data_block_index);
+
+	inode_table[inode_i].occupied = 0;
+	inode_table[inode_i].index = 0;
+	inode_table[inode_i].size = 0;
+	inode_table[inode_i].indir_pointer = 0;
+	for (int i = 0; i < 12; i++){
+		inode_table[inode_i].dir_pointer[i] = 0;
+	}
+
+	for (int i = 0; i < NUM_OF_FILE; i++){
+		if (file_descriptor_table[i].id == inode_i){
+			file_descriptor_table[i].write_pos = 0;
+			file_descriptor_table[i].read_pos = 0;
+			file_descriptor_table[i].occupied = 0;
+			file_descriptor_table[i].id = 0;
+		}
+	}
+
+	int index = get_file_index_in_root(file);
+	root_directory_table[index].file_name = "";
+	root_directory_table[index].extension = "";
+	root_directory_table[index].inode_index = 0;
 	return 0;
 }

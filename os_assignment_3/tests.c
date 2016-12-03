@@ -93,7 +93,7 @@ int test_read_all_files(int *file_id, int *file_size, char **write_buf, int num_
     //Just a precaution. Don't think it's actually necessary
     buf[file_size[i]] = '\0';
     if(res != file_size[i])
-      fprintf(stderr, "Warning: sfs_fread should return number of bytes read. Potential read fail?\n");
+      fprintf(stderr, "Warning: test_read_all_files: sfs_fread should return number of bytes read. Potential read fail?\n");
     //Compare both
     if(strcmp(buf, write_buf[i]) != 0){
       fprintf(stderr, "Error: \nRead failed.\n\n");
@@ -119,8 +119,9 @@ int test_simple_read_files(int *file_id, int *file_size, char **write_buf, int n
     //Read at the read_ptr location
     res = sfs_fread(file_id[i], buf, strlen(test_str));
     buf[strlen(test_str)] = '\0';
+    // printf("buf: %s\n", buf);
     if(res != strlen(test_str))
-      fprintf(stderr, "Warning: sfs_fread should return number of bytes read. Potential read fail?\n");
+      fprintf(stderr, "Warning: test_simple_read_files: sfs_fread should return number of bytes read. Potential read fail?\n");
     if(strcmp(buf, test_str) != 0){
       fprintf(stderr, "Error: \nRead failed. Read:\n%s\nShould have Read:\n%s\n", buf, test_str);
       *err_no += 1;
@@ -489,6 +490,7 @@ int test_get_file_name(char **file_names, int num_file, int *err_no){
     for(int i = 0; i < num_file; i++){
         name_list[i] = calloc(MAX_FNAME_LENGTH*2, sizeof(char));
         res = sfs_get_next_file_name(name_list[i]);
+        printf("name_list[i] %s\n", name_list[i]);
         if (res < 0) {
             fprintf(stderr, "Warning: the sfs_get_next_file_name returned negative values\n");
         }
