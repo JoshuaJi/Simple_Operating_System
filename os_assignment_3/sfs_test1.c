@@ -40,11 +40,13 @@ int simple_test(){
     if(i < iterations - 1) //Fun with frseek and fwseek
       test_seek(file_id, file_size, write_ptr, write_buf, num_file, 10, &err_no);
   }
+
+/*
   //test close + reading
   test_close_files(file_names, file_id, num_file, &err_no);
   test_open_old_files(file_names, file_id, num_file, &err_no);
   test_read_all_files(file_id, file_size, write_buf, num_file, &err_no);
-/*
+
   //testing Remove
   test_remove_files(file_id, file_size, write_ptr, file_names, write_buf, num_file, &err_no);
   free_name_element(file_names, num_file);
