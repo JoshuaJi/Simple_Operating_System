@@ -16,7 +16,7 @@
 #define NUM_OF_DATA_BLOCK 2034
 
 char* disk_name = "sys_xu_ji";
-int next_file_index;
+int next_file_index=0;
 
 typedef struct Super_Block{
 	int magic_number;
@@ -107,14 +107,15 @@ void mksfs(int fresh){
 
 int sfs_get_next_file_name(char *fname){
 
-	for (int i = next_file_index; i < NUM_OF_FILE; i++){
-		if((root_directory_table+i)->file_name){
-			next_file_index = i+1;
-			fname = strdup((root_directory_table+next_file_index)->file_name);
+	for (int i = next_file_index; i < NUM_OF_FILE-next_file_index; i++){
+		if((root_directory_table+i)->file_name != NULL && strcmp((root_directory_table+i)->file_name, "")!=0){
+			strcpy(fname, (root_directory_table+i)->file_name);
+			//fname= strdup( (root_directory_table+i)->file_name);
+
 			strcat(fname, ".");
-			strcat(fname, (root_directory_table+next_file_index)->extension);
-			next_file_index = next_file_index+1;
-			return (root_directory_table+next_file_index)->inode_index;
+			strcat(fname, (root_directory_table+i)->extension);
+			next_file_index = i+1;
+			return (root_directory_table+i)->inode_index;
 		}
 	}
 	next_file_index = 0;
@@ -180,6 +181,7 @@ int split_name(char *fname, char *file_name, char *extension){
 			return -1;
 		}
 	}
+	extension[3] = '\0';
 	return index;
 }
 
@@ -232,7 +234,7 @@ int sfs_fopen(char *name){
 
 	if (inode_i == -1){
 		char *file_name = malloc(16);
-		char *extension = malloc(3);
+		char *extension = malloc(4);
 
 		inode_i = get_avaliable_inode_index();
 

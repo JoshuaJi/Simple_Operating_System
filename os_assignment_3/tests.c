@@ -490,7 +490,6 @@ int test_get_file_name(char **file_names, int num_file, int *err_no){
     for(int i = 0; i < num_file; i++){
         name_list[i] = calloc(MAX_FNAME_LENGTH*2, sizeof(char));
         res = sfs_get_next_file_name(name_list[i]);
-        printf("name_list[i] %s\n", name_list[i]);
         if (res < 0) {
             fprintf(stderr, "Warning: the sfs_get_next_file_name returned negative values\n");
         }
